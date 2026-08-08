@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 p-6 flex justify-center">
+    <div class="max-w-md w-full bg-white p-6 rounded-xl shadow-md border border-slate-200">
+        <h3 class="text-lg font-bold mb-1">🎤 Laboratório de Pronúncia</h3>
+        <p id="counter" class="text-sm text-slate-500 mb-6">Frase 1 de 5</p>
+        
+        <div id="sentence-display" class="p-4 bg-indigo-50 border-l-4 border-indigo-600 rounded mb-4 font-medium text-indigo-900 text-lg">
+            "Eu tenho quatro avós e cinco primas."
+        </div>
+
+        <div class="flex gap-2 mb-4">
+            <button id="listen-btn" class="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg font-bold hover:bg-slate-300 transition">Ouvir Frase</button>
+            <button id="start-btn" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 transition">Começar</button>
+        </div>
+
+        <button id="next-btn" class="hidden w-full bg-emerald-600 text-white py-2 rounded-lg font-bold hover:bg-emerald-700 transition mb-4">Próxima Frase →</button>
+
+        <div id="feedback" class="mt-4 p-3 rounded text-sm hidden text-center font-medium"></div>
+    </div>
+
+    <script>
+        const sentences = [
+            "Eu tenho quatro avós e cinco primas.",
+            "Vocês tiveram que trabalhar até tarde no escritório.",
+            "Ela tinha cabelo curto e liso quando era criança",
+            "Elas ficam surpresas com os presentes.",
+            "Você ficava na biblioteca pesquisando nos seus livros."
+        ];
+        
+        let currentIndex = 0;
+        let isListening = false;
+        
+        const display = document.getElementById('sentence-display');
+        const startBtn = document.getElementById('start-btn');
+        const listenBtn = document.getElementById('listen-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const feedback = document.getElementById('feedback');
+        const counter = document.getElementById('counter');
+        
+        function normalize(text) {
+            return text.toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.continuous = false;
+
+        listenBtn.onclick = () => {
+            const utterance = new SpeechSynthesisUtterance(sentences[currentIndex]);
+            utterance.lang = 'pt-BR';
+            window.speechSynthesis.speak(utterance);
+        };
+
+        startBtn.onclick = () => {
+            if (!isListening) {
+                isListening = true;
+                startBtn.innerText = "Parar";
+                startBtn.className = "flex-1 bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 transition";
+                feedback.innerText = "Ouvindo...";
+                feedback.className = "mt-4 p-3 rounded text-sm text-center bg-yellow-100 text-yellow-800";
+                feedback.classList.remove('hidden');
+                recognition.start();
+            } else {
+                recognition.stop();
+            }
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            startBtn.innerText = "Começar";
+            startBtn.className = "flex-1 bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 transition";
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            const normTranscript = normalize(transcript);
+            const normTarget = normalize(sentences[currentIndex]);
+            
+            if (normTranscript === normTarget) {
+                feedback.className = "mt-4 p-3 rounded text-sm text-center bg-green-100 text-green-800";
+                feedback.innerText = "✅ Excelente! Você acertou.";
+                nextBtn.classList.remove('hidden');
+            } else {
+                feedback.className = "mt-4 p-3 rounded text-sm text-center bg-red-100 text-red-800";
+                feedback.innerText = "❌ Tente novamente! Você disse: '" + transcript + "'.";
+                nextBtn.classList.add('hidden');
+            }
+        };
+
+        nextBtn.onclick = () => {
+            currentIndex++;
+            if (currentIndex < sentences.length) {
+                display.innerText = '"' + sentences[currentIndex] + '"';
+                counter.innerText = "Frase " + (currentIndex + 1) + " de " + sentences.length;
+                feedback.classList.add('hidden');
+                nextBtn.classList.add('hidden');
+            } else {
+                display.innerText = "Parabéns! Você completou todas as frases.";
+                nextBtn.classList.add('hidden');
+                startBtn.classList.add('hidden');
+                listenBtn.classList.add('hidden');
+                feedback.classList.add('hidden');
+                counter.innerText = "Concluído";
+            }
+        };
+    </script>
+</body>
+</html>
