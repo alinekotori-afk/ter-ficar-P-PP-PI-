@@ -10,36 +10,58 @@
         <h3 class="text-lg font-bold mb-1">🎤 Laboratório de Pronúncia</h3>
         <p id="counter" class="text-sm text-slate-500 mb-6">Frase 1 de 5</p>
         
-        <div id="sentence-display" class="p-4 bg-indigo-50 border-l-4 border-indigo-600 rounded mb-4 font-medium text-indigo-900 text-lg">
+        <div id="sentence-display" class="p-4 bg-indigo-50 border-l-4 border-indigo-600 rounded mb-2 font-medium text-indigo-900 text-lg">
             "Eu tenho quatro avós e cinco primas."
         </div>
 
-        <div class="flex gap-2 mb-4">
+        <p id="hint" class="text-xs text-slate-600 mb-4 italic">Dica: Preste atenção no som brando do 'r' simples.</p>
+
+        <div class="flex gap-2 mb-3">
             <button id="listen-btn" class="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg font-bold hover:bg-slate-300 transition">Ouvir Frase</button>
             <button id="start-btn" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 transition">Começar</button>
         </div>
 
-        <button id="next-btn" class="hidden w-full bg-emerald-600 text-white py-2 rounded-lg font-bold hover:bg-emerald-700 transition mb-4">Próxima Frase →</button>
+        <div class="flex gap-2 mb-4">
+            <button id="skip-btn" class="flex-1 bg-slate-100 text-slate-600 py-2 rounded-lg font-bold hover:bg-slate-200 transition">Pular →</button>
+            <button id="next-btn" class="hidden flex-1 bg-emerald-600 text-white py-2 rounded-lg font-bold hover:bg-emerald-700 transition">Próxima →</button>
+        </div>
 
         <div id="feedback" class="mt-4 p-3 rounded text-sm hidden text-center font-medium"></div>
     </div>
 
     <script>
-        const sentences = [
-            "Eu tenho quatro avós e cinco primas.",
-            "Vocês tiveram que trabalhar até tarde no escritório.",
-            "Ela tinha cabelo curto e liso quando era criança",
-            "Elas ficam surpresas com os presentes.",
-            "Você ficava na biblioteca pesquisando nos seus livros."
+        const data = [
+            { 
+                text: "Eu tenho quatro avós e cinco primas.", 
+                hint: "Dica: O 'r' em 'quatro' é vibrante simples." 
+            },
+            { 
+                text: "Vocês tiveram que trabalhar até tarde no escritório.", 
+                hint: "Dica: Cuidado para não usar o 'r' da garganta (duplo R) em 'trabalhar' e 'escritório'." 
+            },
+            { 
+                text: "Ela tinha cabelo curto e liso quando era criança", 
+                hint: "Dica: Em 'era' e 'curto', o 'r' é brando, como um tapinha na língua." 
+            },
+            { 
+                text: "Elas ficam surpresas com os presentes.", 
+                hint: "Dica: Pronuncie claramente 'surpresas' no feminino, sem trocar o som das consoantes." 
+            },
+            { 
+                text: "Você ficava na biblioteca pesquisando nos seus livros.", 
+                hint: "Dica: Preste atenção no som limpo do 'r' em 'livros'." 
+            }
         ];
         
         let currentIndex = 0;
         let isListening = false;
         
         const display = document.getElementById('sentence-display');
+        const hintDisplay = document.getElementById('hint');
         const startBtn = document.getElementById('start-btn');
         const listenBtn = document.getElementById('listen-btn');
         const nextBtn = document.getElementById('next-btn');
+        const skipBtn = document.getElementById('skip-btn');
         const feedback = document.getElementById('feedback');
         const counter = document.getElementById('counter');
         
@@ -56,8 +78,16 @@
         recognition.lang = 'pt-BR';
         recognition.continuous = false;
 
+        function updateUI() {
+            display.innerText = '"' + data[currentIndex].text + '"';
+            hintDisplay.innerText = data[currentIndex].hint;
+            counter.innerText = "Frase " + (currentIndex + 1) + " de " + data.length;
+            feedback.classList.add('hidden');
+            nextBtn.classList.add('hidden');
+        }
+
         listenBtn.onclick = () => {
-            const utterance = new SpeechSynthesisUtterance(sentences[currentIndex]);
+            const utterance = new SpeechSynthesisUtterance(data[currentIndex].text);
             utterance.lang = 'pt-BR';
             window.speechSynthesis.speak(utterance);
         };
@@ -85,31 +115,37 @@
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             const normTranscript = normalize(transcript);
-            const normTarget = normalize(sentences[currentIndex]);
+            const normTarget = normalize(data[currentIndex].text);
             
             if (normTranscript === normTarget) {
                 feedback.className = "mt-4 p-3 rounded text-sm text-center bg-green-100 text-green-800";
-                feedback.innerText = "✅ Excelente! Você acertou.";
+                feedback.innerText = "✅ Excelente! Pronúncia perfeita.";
                 nextBtn.classList.remove('hidden');
             } else {
                 feedback.className = "mt-4 p-3 rounded text-sm text-center bg-red-100 text-red-800";
-                feedback.innerText = "❌ Tente novamente! Você disse: '" + transcript + "'.";
-                nextBtn.classList.add('hidden');
+                
+                // Verificação específica para erros comuns de 'R' forte/garganta ou gênero (ex: surpresos)
+                let customTip = "";
+                if (normTranscript.includes("rr") || transcript.toLowerCase().includes("h")) {
+                    customTip = " ⚠️ Atenção: Você usou um 'r' muito forte (da garganta/duplo R). Nessas palavras o 'r' deve ser simples e brando!";
+                } else if (currentIndex === 3 && (normTranscript.includes("surpresos") || normTranscript.includes("surprezzos"))) {
+                    customTip = " ⚠️ Atenção: O correto é 'surpresas' (feminino) com som limpo de 's'.";
+                }
+
+                feedback.innerText = "❌ Você disse: '" + transcript + "'. " + customTip + " Tente novamente ou clique em Pular.";
+                nextBtn.classList.remove('hidden'); // Permite avançar mesmo se errar
             }
         };
 
-        nextBtn.onclick = () => {
+        skipBtn.onclick = nextBtn.onclick = () => {
             currentIndex++;
-            if (currentIndex < sentences.length) {
-                display.innerText = '"' + sentences[currentIndex] + '"';
-                counter.innerText = "Frase " + (currentIndex + 1) + " de " + sentences.length;
-                feedback.classList.add('hidden');
-                nextBtn.classList.add('hidden');
+            if (currentIndex < data.length) {
+                updateUI();
             } else {
-                display.innerText = "Parabéns! Você completou todas as frases.";
-                nextBtn.classList.add('hidden');
-                startBtn.classList.add('hidden');
-                listenBtn.classList.add('hidden');
+                display.innerText = "Parabéns! Você completou todas as frases do laboratório.";
+                hintDisplay.classList.add('hidden');
+                document.querySelector('.flex.gap-2.mb-3').classList.add('hidden');
+                document.querySelector('.flex.gap-2.mb-4').classList.add('hidden');
                 feedback.classList.add('hidden');
                 counter.innerText = "Concluído";
             }
